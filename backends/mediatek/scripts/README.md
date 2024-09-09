@@ -38,13 +38,13 @@ Follow the steps below to set up your build environment:
 
 1. **ExercuTorch Official Tutorial**: Refer to the [Setting up ExercuTorch](https://pytorch.org/executorch/stable/getting-started-setup) guide for detailed instructions on setting up the ExercuTorch environment.
 
-2. **Build Script**: Once the prerequisites are in place, run the `mtk_build.sh` script to start the build process.
+2. **Build**: Once the prerequisites are in place, run the `mtk_build.sh` script to start the build process, ExecuTroch MediaTek backend will be built as `libneuron_backend.so` under `cmake-android-out/backends/`.
 
    ```bash
    ./mtk_build.sh
    ```
-3. **Push MediaTek universal SDK to the device**: push libneuronusdk_adapter.mtk.so to the phone and export it to the `$LD_LIBRARY_PATH` environment variable before executing ExercuTorch with MediaTek backend.
+3. **Push MediaTek universal SDK and MediaTek backend to the device**: push `libneuronusdk_adapter.mtk.so` and `libneuron_backend.so` to the phone and export it to the `$LD_LIBRARY_PATH` environment variable before executing ExercuTorch with MediaTek backend.
 
    ```bash
-   export LD_LIBRARY_PATH=<path_to_usdk>:$LD_LIBRARY_PATH
+   export LD_LIBRARY_PATH=<path_to_usdk>:<path_to_neuron_backend>:$LD_LIBRARY_PATH
    ```
