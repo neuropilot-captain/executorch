@@ -80,6 +80,7 @@ class PhiConfig(BaseConfig):
         self.original_max_position_embeddings = kwargs.pop(
             "original_max_position_embeddings", None
         )
+        self.rope_theta = kwargs.pop("rope_theta", 10000)
 
         if position_embedding not in ["rope", "alibi"]:
             raise ValueError("Positional embedding must be one of: rope, alibi")
