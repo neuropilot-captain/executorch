@@ -37,6 +37,12 @@ setup_calibration_data() {
   tar zxvf /tmp/imagenette2-160.tgz --strip-components=1 --directory "${MEDIATEK_INSTALLATION_DIR}"
 }
 
+download_model_weights() {
+  git lfs install
+  git clone https://huggingface.co/Qwen/Qwen2.5-1.5B /tmp/qwen2_5_1_5b
+}
+
 install_neuropilot
 setup_neuropilot
 setup_calibration_data
+download_model_weights

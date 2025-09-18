@@ -304,20 +304,40 @@ test_model_with_mps() {
 }
 
 test_model_with_mediatek() {
-  if [[ "${MODEL_NAME}" == "dl3" ]]; then
-    EXPORT_SCRIPT=deeplab_v3
-  elif [[ "${MODEL_NAME}" == "mv3" ]]; then
-    EXPORT_SCRIPT=mobilenet_v3
-  elif [[ "${MODEL_NAME}" == "mv2" ]]; then
-    EXPORT_SCRIPT=mobilenet_v2
-  elif [[ "${MODEL_NAME}" == "ic4" ]]; then
-    EXPORT_SCRIPT=inception_v4
-  elif [[ "${MODEL_NAME}" == "ic3" ]]; then
-    EXPORT_SCRIPT=inception_v3
-  fi
+  case $MODEL_NAME in 
+    "dl3"|"mv3"|"mv2"|"ic4"|"ic3")
+      case "$MODEL_NAME" in
+        "dl3") EXPORT_SCRIPT=deeplab_v3 ;;
+        "mv3") EXPORT_SCRIPT=mobilenet_v3 ;;
+        "mv2") EXPORT_SCRIPT=mobilenet_v2 ;;
+        "ic4") EXPORT_SCRIPT=inception_v4 ;;
+        "ic3") EXPORT_SCRIPT=inception_v3 ;;
+      esac
 
-  PYTHONPATH=examples/mediatek/ "${PYTHON_EXECUTABLE}" -m examples.mediatek.model_export_scripts.${EXPORT_SCRIPT} -d /tmp/neuropilot/train -a ${EXPORT_SCRIPT}
-  EXPORTED_MODEL=$(find "./${EXPORT_SCRIPT}" -type f -name "*.pte" -print -quit)
+      PYTHONPATH=examples/mediatek/ "${PYTHON_EXECUTABLE}" -m examples.mediatek.model_export_scripts.${EXPORT_SCRIPT} -d /tmp/neuropilot/train -a ${EXPORT_SCRIPT}
+      EXPORTED_MODEL=$(find "./${EXPORT_SCRIPT}" -type f -name "*.pte" -print -quit)
+      ;;
+
+    "qwen2_5_1_5b")
+      DATASET="-d examples/mediatek/aot_utils/llm_utils/prompts/llama3.txt"
+      SHAPES="-shapes 128t512c 1t512c"
+      CONFIG="/tmp/${MODEL_NAME}/config.json"
+      OUTPUT_FOLDER="./pte/${MODEL_NAME}_A16W8_4_chunks"
+
+      if [[ "${MODEL_NAME}" == "qwen2_5_1_5b" ]]; then
+        EXPORT_SCRIPT=qwen
+      fi
+
+      PYTHONPATH=examples/mediatek/ "${PYTHON_EXECUTABLE}" -m examples.mediatek.model_export_scripts.${EXPORT_SCRIPT} \
+      ${CONFIG} ${DATASET} ${SHAPES}
+      EXPORTED_MODEL=$(find "${OUTPUT_FOLDER}" -type f -name "*.pte" -print -quit)
+      ;;
+
+    *)
+      echo "Unsupported model: ${MODEL_NAME}"
+      exit 1
+      ;;
+  esac
 }
 
 
