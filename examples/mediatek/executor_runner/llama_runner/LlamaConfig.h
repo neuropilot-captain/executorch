@@ -25,7 +25,7 @@ struct LlamaModelOptions {
   size_t num_head = 32;
   size_t num_layer = 32;
   size_t head_dim = 0;
-  size_t window_size = 0;
+  size_t swa_size = 0;
   size_t max_token_length = 2048;
   double partial_rotary_factor = 1.0;
   double rot_emb_base = 10000.0;

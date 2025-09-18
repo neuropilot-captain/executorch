@@ -61,7 +61,7 @@ class LlamaModelChunk : public ModelChunk {
       const size_t initBatchSize,
       const size_t numCache,
       const size_t numRotEmbInputs,
-      const bool enableSWA,
+      const bool kEnableSWA,
       const RotaryEmbeddingMasterLut* rotEmbMasterLut);
 
   ~LlamaModelChunk();
@@ -113,22 +113,22 @@ class LlamaModelChunk : public ModelChunk {
 
  private:
   // IO Setup and Query
-  virtual void defineIOs();
+  virtual void DefineIOs();
 
-  void defineInput(const IOKind kind, const size_t count = 1);
-  void defineOutput(const IOKind kind, const size_t count = 1);
+  void DefineInput(const IOKind kind, const size_t count = 1);
+  void DefineOutput(const IOKind kind, const size_t count = 1);
 
-  bool hasInput(const IOKind kind) const;
-  bool hasOutput(const IOKind kind) const;
+  bool HasInput(const IOKind kind) const;
+  bool HasOutput(const IOKind kind) const;
 
-  const std::vector<size_t>& getInputIndexes(const IOKind kind) const;
-  const std::vector<size_t>& getOutputIndexes(const IOKind kind) const;
+  const std::vector<size_t>& GetInputIndexes(const IOKind kind) const;
+  const std::vector<size_t>& GetOutputIndexes(const IOKind kind) const;
 
-  size_t getInputIndex(const IOKind kind, const size_t pos = 0) const;
-  size_t getOutputIndex(const IOKind kind, const size_t pos = 0) const;
+  size_t GetInputIndex(const IOKind kind, const size_t pos = 0) const;
+  size_t GetOutputIndex(const IOKind kind, const size_t pos = 0) const;
 
-  size_t getNumInputsFor(const IOKind kind) const;
-  size_t getNumOutputsFor(const IOKind kind) const;
+  size_t GetNumInputsFor(const IOKind kind) const;
+  size_t GetNumOutputsFor(const IOKind kind) const;
 
   void CheckIoCount();
 
@@ -163,8 +163,8 @@ class LlamaModelChunk : public ModelChunk {
 
   // Mask builder
   std::unique_ptr<MaskBuilder> mMaskBuilder;
-  const size_t kWindowSize;
-  const bool enableSWA;
+  const size_t kSWASize;
+  const bool kEnableSWA;
 
   // Keep track of token index. Its value can also be viewed as numSeenToken.
   size_t mCurrentTokenIndex = 0;

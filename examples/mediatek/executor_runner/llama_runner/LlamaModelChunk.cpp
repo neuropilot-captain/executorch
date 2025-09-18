@@ -29,17 +29,6 @@
 
 namespace example {
 
-inline std::vector<size_t> getIndexRange(
-    const size_t startIndex,
-    const size_t count) {
-  std::vector<size_t> indexes(count);
-  size_t counter = startIndex;
-  for (auto& idx : indexes) {
-    idx = counter++;
-  }
-  return indexes;
-}
-
 LlamaModelChunk::LlamaModelChunk(
     const ModelPathMap& modelPathMap,
     const LlamaModelOptions& modelOptions,
@@ -56,11 +45,10 @@ LlamaModelChunk::LlamaModelChunk(
       kMaskType(modelOptions.mask_type),
       kRotEmbMasterLut(rotEmbMasterLut),
       kCacheType(modelOptions.cache_type),
-      kWindowSize(modelOptions.window_size),
-
+      kSWASize(modelOptions.swa_size),
       kRotEmbInputCount(numRotEmbInputs),
       kCacheCount(numCache),
-      enableSWA(enableSWA),
+      kEnableSWA(enableSWA),
       kCacheTypeSize(llm_helper::getLLMTypeSize(kCacheType)) {}
 
 LlamaModelChunk::~LlamaModelChunk() {}
@@ -96,7 +84,7 @@ std::string LlamaModelChunk::SelectMethod(
 void LlamaModelChunk::Initialize() {
   LoadModels();
   GetModelIoInfo();
-  defineIOs();
+  DefineIOs();
   CheckIoCount();
   PrepareCacheIOs();
   AllocateIoBuffers();
@@ -108,21 +96,21 @@ void LlamaModelChunk::Initialize() {
   mIsInitialized = true;
 }
 
-void LlamaModelChunk::defineIOs() {
+void LlamaModelChunk::DefineIOs() {
   // Inputs
-  defineInput(IOKind::Embedding);
-  defineInput(IOKind::Mask);
-  defineInput(IOKind::SWAMask, enableSWA);
-  defineInput(IOKind::RotEmb, kRotEmbInputCount);
-  defineInput(IOKind::KVCache, kCacheCount);
+  DefineInput(IOKind::Embedding);
+  DefineInput(IOKind::Mask);
+  DefineInput(IOKind::SWAMask, kEnableSWA);
+  DefineInput(IOKind::RotEmb, kRotEmbInputCount);
+  DefineInput(IOKind::KVCache, kCacheCount);
   // Outputs
-  defineOutput(IOKind::Logits);
-  defineOutput(IOKind::KVCache, kCacheCount);
+  DefineOutput(IOKind::Logits);
+  DefineOutput(IOKind::KVCache, kCacheCount);
 }
 
-void LlamaModelChunk::defineInput(const IOKind kind, const size_t count) {
+void LlamaModelChunk::DefineInput(const IOKind kind, const size_t count) {
   ET_CHECK_MSG(
-      !hasInput(kind),
+      !HasInput(kind),
       "Input kind has already been defined: %d",
       static_cast<int>(kind));
   const auto startIdx = mExpectedNumInputs;
@@ -132,9 +120,9 @@ void LlamaModelChunk::defineInput(const IOKind kind, const size_t count) {
   mExpectedNumInputs += count;
 }
 
-void LlamaModelChunk::defineOutput(const IOKind kind, const size_t count) {
+void LlamaModelChunk::DefineOutput(const IOKind kind, const size_t count) {
   ET_CHECK_MSG(
-      !hasOutput(kind),
+      !HasOutput(kind),
       "Output kind has already been defined: %d",
       static_cast<int>(kind));
   const auto startIdx = mExpectedNumOutputs;
@@ -144,57 +132,57 @@ void LlamaModelChunk::defineOutput(const IOKind kind, const size_t count) {
   mExpectedNumOutputs += count;
 }
 
-bool LlamaModelChunk::hasInput(const IOKind kind) const {
+bool LlamaModelChunk::HasInput(const IOKind kind) const {
   return (mInputIndexes.find(kind) != mInputIndexes.end()) &&
       !mInputIndexes.at(kind).empty();
 }
 
-bool LlamaModelChunk::hasOutput(const IOKind kind) const {
+bool LlamaModelChunk::HasOutput(const IOKind kind) const {
   return (mOutputIndexes.find(kind) != mOutputIndexes.end()) &&
       !mOutputIndexes.at(kind).empty();
 }
 
-const std::vector<size_t>& LlamaModelChunk::getInputIndexes(
+const std::vector<size_t>& LlamaModelChunk::GetInputIndexes(
     const IOKind kind) const {
   ET_CHECK_MSG(
-      hasInput(kind), "Check failed for input kind %d", static_cast<int>(kind));
+      HasInput(kind), "Check failed for input kind %d", static_cast<int>(kind));
   return mInputIndexes.at(kind);
 }
 
-const std::vector<size_t>& LlamaModelChunk::getOutputIndexes(
+const std::vector<size_t>& LlamaModelChunk::GetOutputIndexes(
     const IOKind kind) const {
   ET_CHECK_MSG(
-      hasOutput(kind),
+      HasOutput(kind),
       "Check failed for output kind %d",
       static_cast<int>(kind));
   return mOutputIndexes.at(kind);
 }
 
-size_t LlamaModelChunk::getInputIndex(const IOKind kind, const size_t pos)
+size_t LlamaModelChunk::GetInputIndex(const IOKind kind, const size_t pos)
     const {
-  const auto& inputIndexes = getInputIndexes(kind);
+  const auto& inputIndexes = GetInputIndexes(kind);
   ET_CHECK_MSG(
-      pos < inputIndexes.size(), "getInputIndex(): Index out of range");
+      pos < inputIndexes.size(), "GetInputIndex(): Index out of range");
   return inputIndexes[pos];
 }
 
-size_t LlamaModelChunk::getOutputIndex(const IOKind kind, const size_t pos)
+size_t LlamaModelChunk::GetOutputIndex(const IOKind kind, const size_t pos)
     const {
-  const auto& outputIndexes = getOutputIndexes(kind);
+  const auto& outputIndexes = GetOutputIndexes(kind);
   ET_CHECK_MSG(
-      pos < outputIndexes.size(), "getOutputIndex(): Index out of range");
+      pos < outputIndexes.size(), "GetOutputIndex(): Index out of range");
   return outputIndexes[pos];
 }
 
-size_t LlamaModelChunk::getNumInputsFor(const IOKind kind) const {
-  if (!hasInput(kind)) {
+size_t LlamaModelChunk::GetNumInputsFor(const IOKind kind) const {
+  if (!HasInput(kind)) {
     return 0;
   }
   return mInputIndexes.at(kind).size();
 }
 
-size_t LlamaModelChunk::getNumOutputsFor(const IOKind kind) const {
-  if (!hasOutput(kind)) {
+size_t LlamaModelChunk::GetNumOutputsFor(const IOKind kind) const {
+  if (!HasOutput(kind)) {
     return 0;
   }
   return mOutputIndexes.at(kind).size();
@@ -225,7 +213,7 @@ bool LlamaModelChunk::HotSwapModel(const size_t tokenBatchSize) {
 
   // Update mask size
   const auto newMaskSizeBytes =
-      mInputBufferInfos[getInputIndex(IOKind::Mask)].nbytesUsed;
+      mInputBufferInfos[GetInputIndex(IOKind::Mask)].nbytesUsed;
   mMaskBuilder->updateMaskSize(newMaskSizeBytes);
 
   return status;
@@ -286,7 +274,7 @@ void LlamaModelChunk::LeftPaddingCachePostprocess() {
   const size_t zeroCount = mCurrentPadSize * strideSizeBytes;
 
   // Fill padded sections with zeros
-  for (const auto cacheInputIdx : getInputIndexes(IOKind::KVCache)) {
+  for (const auto cacheInputIdx : GetInputIndexes(IOKind::KVCache)) {
     auto cacheBuffer =
         reinterpret_cast<char*>(mInputBufferInfos[cacheInputIdx].data);
     for (size_t rowIdx = 0; rowIdx < numRows; rowIdx++) {
@@ -327,7 +315,7 @@ void LlamaModelChunk::RollbackCache(
   const size_t numRows = GetCacheNumRows();
 
   // Shift right and truncate rollbackTokCount, then fill left with zeros
-  for (const auto cacheInputIdx : getInputIndexes(IOKind::KVCache)) {
+  for (const auto cacheInputIdx : GetInputIndexes(IOKind::KVCache)) {
     auto cacheBuffer =
         reinterpret_cast<char*>(mInputBufferInfos[cacheInputIdx].data);
 
@@ -363,18 +351,18 @@ void LlamaModelChunk::UpdatePosEmbAndMask(const size_t numInputToken) {
     ET_LOG(Fatal, "Left-padding is only allowed in the first prompt pass.");
   }
   auto isMaskUpdatable = mMaskBuilder->getMaskUpdateStatus();
-  if (enableSWA) {
+  if (kEnableSWA) {
     const auto& swaMaskBufferInfo =
-        mInputBufferInfos[getInputIndex(IOKind::SWAMask)];
+        mInputBufferInfos[GetInputIndex(IOKind::SWAMask)];
     const auto swaMaskBuffer = swaMaskBufferInfo.data;
     const auto swaMaskSizeBytes = swaMaskBufferInfo.nbytesUsed;
     mMaskBuilder->setMaskBuffer(swaMaskBuffer, swaMaskSizeBytes);
-    mMaskBuilder->enableSlidingWindow(kWindowSize);
+    mMaskBuilder->enableSlidingWindow(kSWASize);
     mMaskBuilder->buildMask(mTokenBatchSize, mCurrentTokenIndex);
   }
   // Pass same isMaskUpdatable to both mask
   mMaskBuilder->setIsMaskUpdatable(isMaskUpdatable);
-  const auto& maskBufferInfo = mInputBufferInfos[getInputIndex(IOKind::Mask)];
+  const auto& maskBufferInfo = mInputBufferInfos[GetInputIndex(IOKind::Mask)];
   const auto maskBuffer = maskBufferInfo.data;
   const auto maskSizeBytes = maskBufferInfo.nbytesUsed;
   mMaskBuilder->setMaskBuffer(maskBuffer, maskSizeBytes);
@@ -416,7 +404,7 @@ void LlamaModelChunk::SetPosEmbed(const size_t tokenIndex) {
 
   auto getRotEmbInputs = [&]() {
     std::vector<void*> rotEmbInputs;
-    const auto& RotEmbInputIndexes = getInputIndexes(IOKind::RotEmb);
+    const auto& RotEmbInputIndexes = GetInputIndexes(IOKind::RotEmb);
     rotEmbInputs.reserve(RotEmbInputIndexes.size());
     for (const auto inputIdx : RotEmbInputIndexes)
       rotEmbInputs.push_back(mInputBufferInfos[inputIdx].data);
@@ -433,14 +421,14 @@ void LlamaModelChunk::SetPosEmbed(const size_t tokenIndex) {
 void LlamaModelChunk::PrepareCacheIOs() {
   // Get cache shape
   const auto method_meta = GetModelMethod().method_meta();
-  const auto firstInCacheIdx = getInputIndex(IOKind::KVCache);
+  const auto firstInCacheIdx = GetInputIndex(IOKind::KVCache);
   mCacheShape = method_meta.input_tensor_meta(firstInCacheIdx)->sizes();
 
   // Link cache IOs
-  const size_t numCaches = getNumInputsFor(IOKind::KVCache);
+  const size_t numCaches = GetNumInputsFor(IOKind::KVCache);
   for (size_t i = 0; i < numCaches; i++) {
     this->LinkModelIO(
-        getInputIndex(IOKind::KVCache, i), getOutputIndex(IOKind::KVCache, i));
+        GetInputIndex(IOKind::KVCache, i), GetOutputIndex(IOKind::KVCache, i));
   }
 }
 
@@ -463,17 +451,17 @@ size_t LlamaModelChunk::GetCacheStrideSize() const {
 void LlamaModelChunk::InitMaskBuilder() {
   mMaskBuilder = std::make_unique<MaskBuilder>(kMaskType, kCacheLength);
   // SWA Mask
-  if (enableSWA) {
+  if (kEnableSWA) {
     const auto& swaMaskBufferInfo =
-        mInputBufferInfos[getInputIndex(IOKind::SWAMask)];
+        mInputBufferInfos[GetInputIndex(IOKind::SWAMask)];
     const auto swaMaskBuffer = swaMaskBufferInfo.data;
     const auto swaMaskSizeBytes = swaMaskBufferInfo.nbytesUsed;
     mMaskBuilder->setMaskBuffer(swaMaskBuffer, swaMaskSizeBytes);
-    mMaskBuilder->enableSlidingWindow(kWindowSize);
+    mMaskBuilder->enableSlidingWindow(kSWASize);
     mMaskBuilder->buildMask(mTokenBatchSize, mCurrentTokenIndex);
   }
   // Global Mask
-  const auto& maskBufferInfo = mInputBufferInfos[getInputIndex(IOKind::Mask)];
+  const auto& maskBufferInfo = mInputBufferInfos[GetInputIndex(IOKind::Mask)];
   const auto maskBuffer = maskBufferInfo.data;
   const auto maskSizeBytes = maskBufferInfo.nbytesUsed;
   mMaskBuilder->setMaskBuffer(maskBuffer, maskSizeBytes);
@@ -485,7 +473,7 @@ void LlamaModelChunk::InitMaskBuilder() {
 
 void LlamaModelChunk::InitCache() {
   // Zero initialization
-  for (const auto cacheIdx : getInputIndexes(IOKind::KVCache)) {
+  for (const auto cacheIdx : GetInputIndexes(IOKind::KVCache)) {
     const auto& inputCacheInfo = mInputBufferInfos[cacheIdx];
     char* cacheBuffer = reinterpret_cast<char*>(inputCacheInfo.data);
     const size_t cacheSizeBytes = inputCacheInfo.nbytes;
